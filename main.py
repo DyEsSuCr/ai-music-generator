@@ -32,6 +32,7 @@ music_gen_secrets = modal.Secret.from_name('music-gen-secret')
 
 class GenerateMusicResponse(BaseModel):
     audio_data: str
+    image_data: str
 
 
 @app.cls(
@@ -82,25 +83,89 @@ class MusicGenServer:
     def generate(self) -> GenerateMusicResponse:
         output_dir = '/tmp/outputs'
         os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, f'{uuid.uuid4()}.wav')
 
+        # Generate unique filenames
+        audio_filename = f'{uuid.uuid4()}.wav'
+        image_filename = f'{uuid.uuid4()}.png'
+
+        audio_path = os.path.join(output_dir, audio_filename)
+        image_path = os.path.join(output_dir, image_filename)
+
+        # Music generation prompt and lyrics
+        music_prompt = 'electronic rap'
+        lyrics = """[verse]
+        Waves on the bass, pulsing in the speakers,
+        Turn the dial up, we chasing six-figure features,
+        Griding on the beats, codes in the creases,
+        Digital hustler, midnight in sneakers.
+
+        [chorus]
+        Electro vibes, hearts beat with the hum,
+        Urban legends ride, we ain't ever numb,
+        Circuits sparking live, tapping on the drum,
+        Living on the edge, never succumb.
+
+        [verse]
+        Synthesizers blaze, city lights a glow,
+        Rhythm in the haze, moving with the flow,
+        Swagger on stage, energy to blow,
+        From the blocks to the booth, you already know.
+
+        [bridge]
+        Night's electric, streets full of dreams,
+        Bass hits collective, bursting at seams,
+        Hustle perspective, all in the schemes,
+        Rise and reflective, ain't no in-betweens.
+
+        [verse]
+        Vibin' with the crew, sync in the wire,
+        Got the dance moves, fire in the attire,
+        Rhythm and blues, soul's our supplier,
+        Run the digital zoo, higher and higher.
+
+        [chorus]
+        Electro vibes, hearts beat with the hum,
+        Urban legends ride, we ain't ever numb,
+        Circuits sparking live, tapping on the drum,
+        Living on the edge, never succumb."""
+
+        # Generate music
         self.music_model(
-            prompt='electronic rap',
-            lyrics="[verse]\nWaves on the bass, pulsing in the speakers,\nTurn the dial up, we chasing six-figure features,\nGrinding on the beats, codes in the creases,\nDigital hustler, midnight in sneakers.\n\n[chorus]\nElectro vibes, hearts beat with the hum,\nUrban legends ride, we ain't ever numb,\nCircuits sparking live, tapping on the drum,\nLiving on the edge, never succumb.\n\n[verse]\nSynthesizers blaze, city lights a glow,\nRhythm in the haze, moving with the flow,\nSwagger on stage, energy to blow,\nFrom the blocks to the booth, you already know.\n\n[bridge]\nNight's electric, streets full of dreams,\nBass hits collective, bursting at seams,\nHustle perspective, all in the schemes,\nRise and reflective, ain't no in-betweens.\n\n[verse]\nVibin' with the crew, sync in the wire,\nGot the dance moves, fire in the attire,\nRhythm and blues, soul's our supplier,\nRun the digital zoo, higher and higher.\n\n[chorus]\nElectro vibes, hearts beat with the hum,\nUrban legends ride, we ain't ever numb,\nCircuits sparking live, tapping on the drum,\nLiving on the edge, never succumb.",
+            prompt=music_prompt,
+            lyrics=lyrics,
             audio_duration=180,
             infer_step=60,
             guidance_scale=15,
-            save_path=output_path,
+            save_path=audio_path,
         )
 
-        with open(output_path, 'rb') as f:
-            audio_bytes = f.read()
+        # Generate album cover image
+        image_prompt = f'{music_prompt} album cover, futuristic cyberpunk style, neon lights, urban cityscape, digital art, high quality'
 
+        generated_image = self.image_pipe(
+            prompt=image_prompt,
+            num_inference_steps=4,  # SDXL-Turbo works well with 4 steps
+            guidance_scale=0.0,  # SDXL-Turbo doesn't need guidance
+        ).images[0]
+
+        # Save the generated image
+        generated_image.save(image_path)
+
+        # Read and encode audio file
+        with open(audio_path, 'rb') as f:
+            audio_bytes = f.read()
         audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
 
-        os.remove(output_path)
+        # Read and encode image file
+        with open(image_path, 'rb') as f:
+            image_bytes = f.read()
+        image_b64 = base64.b64encode(image_bytes).decode('utf-8')
 
-        return GenerateMusicResponse(audio_data=audio_b64)
+        # Clean up temporary files
+        os.remove(audio_path)
+        os.remove(image_path)
+
+        return GenerateMusicResponse(audio_data=audio_b64, image_data=image_b64)
 
 
 @app.local_entrypoint()
@@ -112,7 +177,17 @@ def main():
     response.raise_for_status()
     result = GenerateMusicResponse(**response.json())
 
+    # Save audio file
     audio_data = base64.b64decode(result.audio_data)
-    output_path = 'ai-music.wav'
-    with open(output_path, 'wb') as f:
+    audio_output_path = 'ai-music.wav'
+    with open(audio_output_path, 'wb') as f:
         f.write(audio_data)
+
+    # Save image file
+    image_data = base64.b64decode(result.image_data)
+    image_output_path = 'ai-album-cover.png'
+    with open(image_output_path, 'wb') as f:
+        f.write(image_data)
+
+    print(f'Generated music saved to: {audio_output_path}')
+    print(f'Generated album cover saved to: {image_output_path}')
