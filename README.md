@@ -50,7 +50,7 @@ These are created automatically if they don't exist.
 
 1. Clone the repository:
 ```bash
-git clone <your-repository>
+git clone https://github.com/DyEsSuCr/ai-music-generator
 cd music-generator
 ```
 
