@@ -14,7 +14,7 @@ An AI-powered music generator that uses ACE-Step to create complete electronic r
 ## Requirements
 
 - Modal account
-- Python 3.8+
+- Python 3.11+
 - `requirements.txt` file with dependencies
 - `prompts` folder with configuration files
 
