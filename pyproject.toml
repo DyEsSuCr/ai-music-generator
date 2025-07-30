@@ -1,0 +1,25 @@
+[project]
+name = "ai-music"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "diffusers>=0.34.0",
+    "modal>=1.1.0",
+    "pydantic>=2.11.7",
+    "ruff>=0.12.5",
+    "torch>=2.7.1",
+    "transformers>=4.54.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+docstring-code-format = true
+docstring-code-line-length = 88
